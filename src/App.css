@@ -58,6 +58,35 @@ body, html {
   gap: 1rem;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.flight-time {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.3);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-main);
+  letter-spacing: 0.1em;
+  margin-left: 1rem;
+}
+
+.flight-time-label {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.15em;
+}
+
 .header-left h1 {
   margin: 0;
   font-family: var(--font-display);
@@ -118,16 +147,66 @@ body, html {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.section {
-  /* Extends glass-card via className in JSX */
-}
-
-.metric-box {
-  /* Extends glass-card via className in JSX */
-}
-
 .altitude-section {
   flex: 2;
+}
+
+.metric-meta {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  letter-spacing: 0.15em;
+  margin-top: 0.25rem;
+}
+
+.metric-meta strong {
+  color: var(--text-main);
+  font-weight: 600;
+  margin: 0 0.3rem;
+}
+
+.metric-chart {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 0.5rem;
+}
+
+.metric-chart-canvas {
+  flex: 1;
+  min-height: 0;
+}
+
+.range-buttons {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  justify-content: flex-end;
+}
+
+.range-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.15rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.05em;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.range-btn:hover {
+  border-color: var(--text-main);
+  color: var(--text-main);
+}
+
+.range-btn.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(251, 191, 36, 0.08);
 }
 
 .metrics-row {
@@ -173,8 +252,38 @@ body, html {
   /* Inherits var(--card-bg) from .glass-card */
 }
 
+.image-section {
+  min-height: 0;
+}
+
 .info-section {
   flex: 1;
+}
+
+.latest-image-wrapper {
+  flex: 1;
+  min-height: 0;
+  border: 4px solid var(--bg-color);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.latest-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.image-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
 }
 
 /* Typography */
@@ -293,13 +402,14 @@ body, html {
   box-shadow: 0 0 10px currentColor;
 }
 
-.online { 
-  color: var(--success); 
+.online {
+  color: var(--success);
   border-color: rgba(52, 211, 153, 0.2);
+  animation: pulse-border 2s infinite;
 }
 
-.offline, .connecting { 
-  color: var(--primary); 
+.offline {
+  color: var(--primary);
   border-color: rgba(251, 191, 36, 0.2);
   animation: pulse-border 2s infinite;
 }
@@ -308,21 +418,6 @@ body, html {
   0% { opacity: 1; }
   50% { opacity: 0.5; }
   100% { opacity: 1; }
-}
-
-/* Footer */
-.dashboard-footer {
-  padding: 0.5rem 2rem;
-  background: var(--header-bg);
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
 }
 
 /* Custom Button */
@@ -338,7 +433,6 @@ body, html {
   cursor: pointer;
   letter-spacing: 0.1em;
   transition: all 0.2s;
-  margin-top: 0.5rem;
 }
 
 .btn-mission:hover {

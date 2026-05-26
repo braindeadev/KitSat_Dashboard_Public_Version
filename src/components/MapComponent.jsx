@@ -1,36 +1,45 @@
-import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import React, { useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
+import iconUrl from 'leaflet/dist/images/marker-icon.png';
+import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
 
-// Fix for default marker icons in React Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
 
-// Helper component to update map view when coordinates change
-function RecenterMap({ lat, lng }) {
+const DEFAULT_CENTER = [60.1695, 24.9354];
+
+function MapEffects({ lat, lng }) {
   const map = useMap();
   React.useEffect(() => {
-    if (lat && lng && lat !== 0 && lng !== 0) {
-      map.setView([lat, lng], map.getZoom());
-    }
+    const t = setTimeout(() => map.invalidateSize(), 0);
+    return () => clearTimeout(t);
+  }, [map]);
+  React.useEffect(() => {
+    if (lat == null || lng == null) return;
+    const c = map.getCenter();
+    if (c.lat === lat && c.lng === lng) return;
+    map.setView([lat, lng], map.getZoom());
   }, [lat, lng, map]);
   return null;
 }
 
-const MapComponent = React.memo(({ lat, lng }) => {
-  const position = [lat || 0, lng || 0];
-  const hasValidCoords = lat !== 0 && lng !== 0;
+const MapComponent = React.memo(({ lat, lng, route = [] }) => {
+  const hasValidCoords = lat != null && lng != null;
+  const initialCenter = useMemo(
+    () => (hasValidCoords ? [lat, lng] : DEFAULT_CENTER),
+    [] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const markerPosition = useMemo(() => [lat ?? 0, lng ?? 0], [lat, lng]);
+  const showRoute = route.length >= 2;
 
   return (
     <div className="map-wrapper">
-      <MapContainer 
-        center={position} 
-        zoom={13} 
+      <MapContainer
+        center={initialCenter}
+        zoom={13}
         scrollWheelZoom={true}
         style={{ height: '100%', width: '100%' }}
       >
@@ -38,16 +47,21 @@ const MapComponent = React.memo(({ lat, lng }) => {
           attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
         />
+        {showRoute && (
+          <Polyline
+            positions={route}
+            pathOptions={{ color: '#fbbf24', weight: 3, opacity: 0.9 }}
+          />
+        )}
         {hasValidCoords && (
-          <Marker position={position}>
+          <Marker position={markerPosition}>
             <Popup>
-              KitSat Current Location <br /> 
-              {typeof lat === 'number' ? lat.toFixed(4) : 'N/A'}, 
-              {typeof lng === 'number' ? lng.toFixed(4) : 'N/A'}
+              KitSat Current Location <br />
+              {lat.toFixed(4)}, {lng.toFixed(4)}
             </Popup>
           </Marker>
         )}
-        <RecenterMap lat={lat} lng={lng} />
+        <MapEffects lat={lat} lng={lng} />
       </MapContainer>
     </div>
   );

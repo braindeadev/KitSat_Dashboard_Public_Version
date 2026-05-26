@@ -1,10 +1,12 @@
 import { useTelemetry } from './hooks/useTelemetry';
 import MapComponent from './components/MapComponent';
-import TelemetryChart from './components/TelemetryChart';
+import MetricChart from './components/MetricChart';
+import LatestImage from './components/LatestImage';
+import FlightTimer from './components/FlightTimer';
 import './App.css';
 
 function App() {
-  const { telemetry, history, loading, status, loadTestData } = useTelemetry();
+  const { telemetry, history, loading, status, maxAlt, minTemp, maxSpeed, flightStartMs, loadTestData, resetFlight } = useTelemetry();
 
   if (loading) {
     return <div className="loading">CONNECTING TO MISSION CONTROL...</div>;
@@ -16,6 +18,20 @@ function App() {
         <div className="header-left">
           <div style={{ width: '24px', height: '24px', background: 'var(--primary)', borderRadius: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#000', fontSize: '0.7rem' }}>KS</div>
           <h1>PSL-1R // Public dashboard</h1>
+          <div className="flight-time">
+            <span className="flight-time-label">Lentoaika</span>
+            <FlightTimer startMs={flightStartMs} />
+          </div>
+          <button onClick={resetFlight} className="btn-mission">RESET</button>
+        </div>
+        <div className="header-right">
+          <div className={`status-indicator ${status}`}>
+            <span className="status-dot"></span>
+            {status.toUpperCase()}
+          </div>
+          <button onClick={loadTestData} className="btn-mission">
+            SIMULATE
+          </button>
         </div>
       </header>
 
@@ -27,11 +43,12 @@ function App() {
               Altitude
             </h3>
             <p className="value-large">
-              {telemetry?.gps_alt?.toFixed(0) ?? '--'}<span className="unit">m</span>
+              {telemetry?.gps_alt?.toFixed(1) ?? '--'}<span className="unit">m</span>
             </p>
-            <div style={{ flex: 1, minHeight: 0, marginTop: '0.5rem' }}>
-              <TelemetryChart data={history} dataKey="alt" unit="m" color="var(--primary)" />
+            <div className="metric-meta">
+              MAX <strong>{maxAlt != null ? maxAlt.toFixed(1) : '--'}</strong> m
             </div>
+            <MetricChart history={history} dataKey="alt" unit="m" color="var(--primary)" />
           </div>
 
           <div className="metrics-row">
@@ -43,6 +60,10 @@ function App() {
               <p className="value-medium">
                 {telemetry?.temp_c?.toFixed(1) ?? '--'}<span className="unit">°C</span>
               </p>
+              <div className="metric-meta">
+                MIN <strong>{minTemp != null ? minTemp.toFixed(1) : '--'}</strong> °C
+              </div>
+              <MetricChart history={history} dataKey="temp" unit="°C" color="var(--accent)" />
             </div>
             <div className="glass-card">
               <h3 className="label">
@@ -52,48 +73,41 @@ function App() {
               <p className="value-medium">
                 {telemetry?.pressure_hpa?.toFixed(1) ?? '--'}<span className="unit">hPa</span>
               </p>
+              <MetricChart history={history} dataKey="pressure" unit="hPa" color="var(--success)" />
             </div>
           </div>
         </section>
 
         <section className="right-column">
           <div className="glass-card map-section">
-            <MapComponent 
-              lat={telemetry?.gps_lat} 
-              lng={telemetry?.gps_lon} 
+            <MapComponent
+              lat={telemetry?.gps_fix ? telemetry.gps_lat : null}
+              lng={telemetry?.gps_fix ? telemetry.gps_lon : null}
+              route={history.filter((h) => h.fix).map((h) => [h.lat, h.lon])}
             />
           </div>
 
-          <div className="glass-card info-section">
-            <h3 className="label">Metadata</h3>
-            <div className="info-list">
-              <div className="info-item">
-                <h4>Flight ID</h4>
-                <p>{telemetry?.flight_id ?? 'N/A'}</p>
+          <div className="metrics-row">
+            <div className="glass-card">
+              <h3 className="label">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+                Speed
+              </h3>
+              <p className="value-medium">
+                {telemetry?.gps_speed?.toFixed(1) ?? '--'}<span className="unit">m/s</span>
+              </p>
+              <div className="metric-meta">
+                MAX <strong>{maxSpeed != null ? maxSpeed.toFixed(1) : '--'}</strong> m/s
               </div>
-              <div className="info-item">
-                <h4>T-Plus</h4>
-                <p>{telemetry ? new Date(telemetry.created_at).toLocaleTimeString() : '--:--:--'}</p>
-              </div>
-              <div className="info-item">
-                <h4>coordinates</h4>
-                <p>{telemetry?.gps_lat?.toFixed(5)} N, {telemetry?.gps_lon?.toFixed(5)} E</p>
-              </div>
-              <div className="info-item" style={{ alignItems: 'flex-end', justifyContent: 'flex-end' }}>
-                <button onClick={loadTestData} className="btn-mission">
-                  SIMULATE
-                </button>
-              </div>
+              <MetricChart history={history} dataKey="speed" unit="m/s" color="var(--error)" />
+            </div>
+            <div className="glass-card image-section">
+              <h3 className="label">Latest Image</h3>
+              <LatestImage />
             </div>
           </div>
         </section>
       </main>
-
-      <footer className="dashboard-footer">
-        <div style={{ display: 'flex', gap: '2rem' }}>
-          <span>NODE_ID: PSL-1R // REFACTORED</span>
-        </div>
-      </footer>
     </div>
   );
 }

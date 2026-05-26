@@ -25,18 +25,19 @@ const TelemetryChart = React.memo(({ data, dataKey, unit, color = "var(--primary
             tickFormatter={(value) => `${value}${unit}`}
             width={65}
           />
-          <Tooltip 
+          <Tooltip
             labelStyle={{ color: 'var(--text-main)', fontWeight: 'bold', fontSize: '11px', marginBottom: '4px', fontFamily: 'var(--font-sans)' }}
-            contentStyle={{ 
-              backgroundColor: 'var(--card-bg)', 
+            contentStyle={{
+              backgroundColor: 'var(--card-bg)',
               backdropFilter: 'blur(8px)',
-              borderRadius: '4px', 
-              border: '1px solid var(--border)', 
+              borderRadius: '4px',
+              border: '1px solid var(--border)',
               padding: '8px',
               boxShadow: 'var(--shadow-lg)'
             }}
             itemStyle={{ color: color, fontSize: '11px', fontFamily: 'var(--font-mono)' }}
             cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
+            formatter={(value) => [`${Number(value).toFixed(2)} ${unit}`, dataKey]}
           />
           <Line 
             type="monotone" 
@@ -45,7 +46,7 @@ const TelemetryChart = React.memo(({ data, dataKey, unit, color = "var(--primary
             strokeWidth={2} 
             dot={false}
             activeDot={{ r: 4, fill: color, stroke: 'var(--bg-color)', strokeWidth: 2 }}
-            isAnimationActive={true}
+            isAnimationActive={false}
           />
         </LineChart>
       </ResponsiveContainer>
