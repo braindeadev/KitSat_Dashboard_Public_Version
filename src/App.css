@@ -245,6 +245,12 @@ body, html {
   filter: brightness(0.9) contrast(1.1);
 }
 
+.balloon-marker {
+  background: transparent;
+  border: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
 .map-section {
   flex: 2;
   padding: 1.5rem;
