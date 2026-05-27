@@ -59,14 +59,6 @@ export const useTelemetry = () => {
   const [maxSpeed, setMaxSpeed] = useState(null);
   const [flightStartMs, setFlightStartMs] = useState(() => Date.now());
 
-  const resetFlight = useCallback(() => {
-    setHistory([]);
-    setMaxAlt(null);
-    setMinTemp(null);
-    setMaxSpeed(null);
-    setFlightStartMs(Date.now());
-  }, []);
-
   const realStatusRef = useRef('offline');
   const simulateTimerRef = useRef(null);
   const simulateIntervalRef = useRef(null);
@@ -233,5 +225,5 @@ export const useTelemetry = () => {
     };
   }, [tableName, updateData, applyRealStatus]);
 
-  return { telemetry, history, loading, status, maxAlt, minTemp, maxSpeed, flightStartMs, loadTestData, resetFlight };
+  return { telemetry, history, loading, status, maxAlt, minTemp, maxSpeed, flightStartMs, loadTestData };
 };

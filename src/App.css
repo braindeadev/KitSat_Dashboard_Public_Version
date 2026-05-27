@@ -64,6 +64,12 @@ body, html {
   gap: 1rem;
 }
 
+.header-range {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .flight-time {
   display: flex;
   align-items: center;
@@ -178,20 +184,13 @@ body, html {
   min-height: 0;
 }
 
-.range-buttons {
-  display: flex;
-  gap: 0.25rem;
-  margin-top: 0.25rem;
-  justify-content: flex-end;
-}
-
 .range-btn {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-muted);
-  padding: 0.15rem 0.4rem;
+  padding: 0.35rem 0.7rem;
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.8rem;
   letter-spacing: 0.05em;
   border-radius: 2px;
   cursor: pointer;

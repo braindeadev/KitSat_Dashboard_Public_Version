@@ -73,7 +73,7 @@ const MapComponent = React.memo(({ lat, lng, route = [] }) => {
         {hasValidCoords && (
           <Marker position={markerPosition} icon={balloonIcon}>
             <Popup>
-              KitSat Current Location <br />
+              KitSatin nykyinen sijainti <br />
               {lat.toFixed(4)}, {lng.toFixed(4)}
             </Popup>
           </Marker>
