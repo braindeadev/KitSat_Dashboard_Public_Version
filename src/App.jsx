@@ -15,7 +15,7 @@ const RANGES = [
 ];
 
 function App() {
-  const { telemetry, history, loading, status, maxAlt, minTemp, maxSpeed, flightStartMs, loadTestData } = useTelemetry();
+  const { telemetry, history, loading, status, maxAlt, minTemp, maxSpeed, flightStartMs, lastDataMs, loadTestData } = useTelemetry();
   const [rangeMs, setRangeMs] = useState(60_000);
 
   if (loading) {
@@ -28,9 +28,13 @@ function App() {
         <div className="header-left">
           <div style={{ width: '24px', height: '24px', background: 'var(--primary)', borderRadius: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#000', fontSize: '0.7rem' }}>KS</div>
           <h1>PSL-1R // Public dashboard</h1>
+          <div className="flight-id">
+            <span className="flight-id-label">Flight ID</span>
+            <span>{telemetry?.flight_id ?? '--'}</span>
+          </div>
           <div className="flight-time">
             <span className="flight-time-label">Lentoaika</span>
-            <FlightTimer startMs={flightStartMs} />
+            <FlightTimer startMs={flightStartMs} lastDataMs={lastDataMs} />
           </div>
           <div className="header-range">
             {RANGES.map((r) => (

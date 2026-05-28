@@ -39,6 +39,9 @@ const toHistoryEntry = (d) => {
   };
 };
 
+const isBadRow = (d) =>
+  d.temp_c === 0 && d.pressure_hpa === 1013.25 && d.gps_fix === false;
+
 const observeMax = (prev, v) => {
   if (v == null || Number.isNaN(v)) return prev;
   return prev == null || v > prev ? v : prev;
@@ -58,12 +61,14 @@ export const useTelemetry = () => {
   const [minTemp, setMinTemp] = useState(null);
   const [maxSpeed, setMaxSpeed] = useState(null);
   const [flightStartMs, setFlightStartMs] = useState(() => Date.now());
+  const [lastDataMs, setLastDataMs] = useState(null);
 
   const realStatusRef = useRef('offline');
   const simulateTimerRef = useRef(null);
   const simulateIntervalRef = useRef(null);
   const lastDataAtRef = useRef(0);
   const channelSubscribedRef = useRef(false);
+  const currentFlightIdRef = useRef(null);
 
   const tableName = import.meta.env.VITE_SUPABASE_TABLE;
 
@@ -75,10 +80,46 @@ export const useTelemetry = () => {
   const markFresh = useCallback((createdAt) => {
     const t = createdAt ? new Date(createdAt).getTime() : Date.now();
     if (t > lastDataAtRef.current) lastDataAtRef.current = t;
+    setLastDataMs(t);
     if (channelSubscribedRef.current) applyRealStatus('online');
   }, [applyRealStatus]);
 
   const updateData = useCallback((newData) => {
+    if (isBadRow(newData)) return;
+
+    const isNewFlight =
+      currentFlightIdRef.current != null &&
+      newData.flight_id !== currentFlightIdRef.current;
+
+    if (isNewFlight) {
+      currentFlightIdRef.current = newData.flight_id;
+      setFlightStartMs(new Date(newData.created_at).getTime());
+      setTelemetry(newData);
+      setHistory([toHistoryEntry(newData)]);
+      setMaxAlt(observeMax(null, newData.gps_alt ?? newData.alt));
+      setMinTemp(observeMin(null, newData.temp_c ?? newData.temp));
+      setMaxSpeed(observeMax(null, newData.gps_speed));
+      markFresh(newData.created_at);
+      supabase
+        .from(tableName)
+        .select('created_at')
+        .eq('flight_id', newData.flight_id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data: first }) => {
+          if (first?.created_at && currentFlightIdRef.current === newData.flight_id) {
+            setFlightStartMs(new Date(first.created_at).getTime());
+          }
+        });
+      return;
+    }
+
+    if (currentFlightIdRef.current == null) {
+      currentFlightIdRef.current = newData.flight_id;
+      setFlightStartMs(new Date(newData.created_at).getTime());
+    }
+
     setTelemetry((prev) => {
       if (prev?.created_at === newData.created_at) return prev;
       return newData;
@@ -92,7 +133,7 @@ export const useTelemetry = () => {
     setMinTemp((prev) => observeMin(prev, newData.temp_c ?? newData.temp));
     setMaxSpeed((prev) => observeMax(prev, newData.gps_speed));
     markFresh(newData.created_at);
-  }, [markFresh]);
+  }, [markFresh, tableName]);
 
   const loadTestData = useCallback(() => {
     if (simulateIntervalRef.current != null) clearInterval(simulateIntervalRef.current);
@@ -115,6 +156,7 @@ export const useTelemetry = () => {
       setMaxAlt((prev) => observeMax(prev, row.gps_alt));
       setMinTemp((prev) => observeMin(prev, row.temp_c));
       setMaxSpeed((prev) => observeMax(prev, row.gps_speed));
+      setLastDataMs(new Date(row.created_at).getTime());
       i++;
     };
 
@@ -162,19 +204,25 @@ export const useTelemetry = () => {
         if (error) {
           console.error('Supabase fetch error:', error.message);
         } else if (data && data.length > 0) {
-          const newest = data[data.length - 1];
+          currentFlightIdRef.current = flightId;
+          setFlightStartMs(new Date(data[0].created_at).getTime());
+          const clean = data.filter((d) => !isBadRow(d));
+          if (clean.length === 0) return;
+          const newest = clean[clean.length - 1];
           setTelemetry(newest);
-          setHistory(data.map(toHistoryEntry));
+          setHistory(clean.map(toHistoryEntry));
           setMaxAlt(
-            data.reduce((m, d) => observeMax(m, d.gps_alt ?? d.alt), null)
+            clean.reduce((m, d) => observeMax(m, d.gps_alt ?? d.alt), null)
           );
           setMinTemp(
-            data.reduce((m, d) => observeMin(m, d.temp_c ?? d.temp), null)
+            clean.reduce((m, d) => observeMin(m, d.temp_c ?? d.temp), null)
           );
           setMaxSpeed(
-            data.reduce((m, d) => observeMax(m, d.gps_speed), null)
+            clean.reduce((m, d) => observeMax(m, d.gps_speed), null)
           );
-          lastDataAtRef.current = new Date(newest.created_at).getTime();
+          const newestMs = new Date(newest.created_at).getTime();
+          lastDataAtRef.current = newestMs;
+          setLastDataMs(newestMs);
         }
       } catch (err) {
         console.error('Catch error:', err);
@@ -225,5 +273,5 @@ export const useTelemetry = () => {
     };
   }, [tableName, updateData, applyRealStatus]);
 
-  return { telemetry, history, loading, status, maxAlt, minTemp, maxSpeed, flightStartMs, loadTestData };
+  return { telemetry, history, loading, status, maxAlt, minTemp, maxSpeed, flightStartMs, lastDataMs, loadTestData };
 };

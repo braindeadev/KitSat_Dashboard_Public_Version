@@ -70,7 +70,8 @@ body, html {
   gap: 0.25rem;
 }
 
-.flight-time {
+.flight-time,
+.flight-id {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -82,10 +83,10 @@ body, html {
   font-size: 0.85rem;
   color: var(--text-main);
   letter-spacing: 0.1em;
-  margin-left: 1rem;
 }
 
-.flight-time-label {
+.flight-time-label,
+.flight-id-label {
   font-family: var(--font-display);
   font-size: 0.65rem;
   font-weight: 700;
