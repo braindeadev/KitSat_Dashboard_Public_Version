@@ -87,12 +87,13 @@ export const useTelemetry = () => {
   const updateData = useCallback((newData) => {
     if (isBadRow(newData)) return;
 
-    const isNewFlight =
-      currentFlightIdRef.current != null &&
-      newData.flight_id !== currentFlightIdRef.current;
+    const curId = currentFlightIdRef.current;
+    const newId = newData.flight_id;
 
-    if (isNewFlight) {
-      currentFlightIdRef.current = newData.flight_id;
+    if (curId != null && newId < curId) return;
+
+    if (curId != null && newId > curId) {
+      currentFlightIdRef.current = newId;
       setFlightStartMs(new Date(newData.created_at).getTime());
       setTelemetry(newData);
       setHistory([toHistoryEntry(newData)]);
@@ -103,20 +104,20 @@ export const useTelemetry = () => {
       supabase
         .from(tableName)
         .select('created_at')
-        .eq('flight_id', newData.flight_id)
+        .eq('flight_id', newId)
         .order('created_at', { ascending: true })
         .limit(1)
         .maybeSingle()
         .then(({ data: first }) => {
-          if (first?.created_at && currentFlightIdRef.current === newData.flight_id) {
+          if (first?.created_at && currentFlightIdRef.current === newId) {
             setFlightStartMs(new Date(first.created_at).getTime());
           }
         });
       return;
     }
 
-    if (currentFlightIdRef.current == null) {
-      currentFlightIdRef.current = newData.flight_id;
+    if (curId == null) {
+      currentFlightIdRef.current = newId;
       setFlightStartMs(new Date(newData.created_at).getTime());
     }
 
@@ -182,7 +183,8 @@ export const useTelemetry = () => {
         const { data: latest, error: latestErr } = await supabase
           .from(tableName)
           .select('flight_id')
-          .order('created_at', { ascending: false })
+          .not('flight_id', 'is', null)
+          .order('flight_id', { ascending: false, nullsFirst: false })
           .limit(1)
           .maybeSingle();
 
