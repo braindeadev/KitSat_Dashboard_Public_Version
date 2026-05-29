@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { useTelemetry } from './hooks/useTelemetry';
-import MapComponent from './components/MapComponent';
-import MetricChart from './components/MetricChart';
 import LatestImage from './components/LatestImage';
 import FlightTimer from './components/FlightTimer';
 import './App.css';
+
+// Lazy-ladataan raskaat riippuvuudet (leaflet, recharts) omiin chunkkeihinsa,
+// jotta ensilatauksen nippu pienenee.
+const MapComponent = lazy(() => import('./components/MapComponent'));
+const MetricChart = lazy(() => import('./components/MetricChart'));
 
 const RANGES = [
   { label: '1m', ms: 60_000 },
@@ -14,9 +17,26 @@ const RANGES = [
   { label: 'MAX', ms: null },
 ];
 
+const ROUTE_MAX_POINTS = 2000;
+
+// Reitti on vain visuaalinen: harvennetaan tasavälein mutta pidetään viimeisin
+// piste mukana, jotta marker-jälki on ajan tasalla. Raakadata ei muutu.
+function buildRoute(history) {
+  const pts = [];
+  for (const h of history) if (h.fix) pts.push([h.lat, h.lon]);
+  if (pts.length <= ROUTE_MAX_POINTS) return pts;
+  const step = pts.length / ROUTE_MAX_POINTS;
+  const out = [];
+  for (let i = 0; i < ROUTE_MAX_POINTS; i++) out.push(pts[Math.floor(i * step)]);
+  const last = pts[pts.length - 1];
+  if (out[out.length - 1] !== last) out.push(last);
+  return out;
+}
+
 function App() {
-  const { telemetry, history, loading, status, maxAlt, minTemp, maxSpeed, flightStartMs, lastDataMs, loadTestData } = useTelemetry();
+  const { telemetry, history, loading, status, maxAlt, minTemp, maxSpeed, flightStartMs, lastDataMs } = useTelemetry();
   const [rangeMs, setRangeMs] = useState(60_000);
+  const route = useMemo(() => buildRoute(history), [history]);
 
   if (loading) {
     return <div className="loading">YHDISTETÄÄN OHJAUSKESKUKSEEN...</div>;
@@ -53,13 +73,11 @@ function App() {
             <span className="status-dot"></span>
             {status === 'online' ? 'VERKOSSA' : 'EI YHTEYTTÄ'}
           </div>
-          <button onClick={loadTestData} className="btn-mission">
-            SIMULOI
-          </button>
         </div>
       </header>
 
       <main className="dashboard-grid">
+        <Suspense fallback={<div className="loading">LADATAAN…</div>}>
         <section className="left-column">
           <div className="glass-card altitude-section">
             <h3 className="label">
@@ -107,7 +125,7 @@ function App() {
             <MapComponent
               lat={telemetry?.gps_fix ? telemetry.gps_lat : null}
               lng={telemetry?.gps_fix ? telemetry.gps_lon : null}
-              route={history.filter((h) => h.fix).map((h) => [h.lat, h.lon])}
+              route={route}
             />
           </div>
 
@@ -131,6 +149,7 @@ function App() {
             </div>
           </div>
         </section>
+        </Suspense>
       </main>
     </div>
   );

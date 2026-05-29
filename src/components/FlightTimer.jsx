@@ -3,9 +3,9 @@ import { useState, useEffect, useRef } from 'react';
 const pad = (n) => String(n).padStart(2, '0');
 
 export default function FlightTimer({ startMs, lastDataMs }) {
-  const [tick, setTick] = useState(0);
+  const [display, setDisplay] = useState('--:--:--');
   const anchorServerMsRef = useRef(lastDataMs);
-  const anchorBrowserMsRef = useRef(Date.now());
+  const anchorBrowserMsRef = useRef(null);
 
   useEffect(() => {
     if (lastDataMs != null && lastDataMs !== anchorServerMsRef.current) {
@@ -15,21 +15,24 @@ export default function FlightTimer({ startMs, lastDataMs }) {
   }, [lastDataMs]);
 
   useEffect(() => {
-    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    const update = () => {
+      if (startMs == null || anchorServerMsRef.current == null) {
+        setDisplay('--:--:--');
+        return;
+      }
+      if (anchorBrowserMsRef.current == null) anchorBrowserMsRef.current = Date.now();
+      const estimatedNow = anchorServerMsRef.current + (Date.now() - anchorBrowserMsRef.current);
+      const sec = Math.max(0, Math.floor((estimatedNow - startMs) / 1000));
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = sec % 60;
+      setDisplay(`${pad(h)}:${pad(m)}:${pad(s)}`);
+    };
+
+    update();
+    const t = setInterval(update, 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [startMs]);
 
-  if (startMs == null || anchorServerMsRef.current == null) {
-    return <span>--:--:--</span>;
-  }
-
-  const estimatedNow = anchorServerMsRef.current + (Date.now() - anchorBrowserMsRef.current);
-  const sec = Math.max(0, Math.floor((estimatedNow - startMs) / 1000));
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
-
-  void tick;
-
-  return <span>{`${pad(h)}:${pad(m)}:${pad(s)}`}</span>;
+  return <span>{display}</span>;
 }

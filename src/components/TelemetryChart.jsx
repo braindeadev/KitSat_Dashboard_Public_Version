@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 const formatTimeLabel = (ms) => new Date(ms).toLocaleTimeString();
 
-const TelemetryChart = React.memo(({ data, dataKey, unit, color = "var(--primary)", domain, ticks }) => {
+const TelemetryChart = React.memo(({ data, dataKey, unit, color = "var(--primary)", domain, ticks, yDomain, yTicks }) => {
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -23,14 +23,15 @@ const TelemetryChart = React.memo(({ data, dataKey, unit, color = "var(--primary
             minTickGap={30}
             dy={15}
           />
-          <YAxis 
-            domain={['auto', 'auto']} 
-            fontSize={13}
-            tick={{ fill: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontWeight: 500 }}
+          <YAxis
+            domain={yDomain ?? ['auto', 'auto']}
+            ticks={yTicks}
+            fontSize={11}
+            tick={{ fill: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontWeight: 500, textAnchor: 'start', dx: -54 }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(value) => `${value}${unit}`}
-            width={65}
+            tickFormatter={(value) => `${Number(value.toFixed(2))}${unit}`}
+            width={72}
           />
           <Tooltip
             labelStyle={{ color: 'var(--text-main)', fontWeight: 'bold', fontSize: '11px', marginBottom: '4px', fontFamily: 'var(--font-sans)' }}

@@ -30,6 +30,7 @@ export function useLatestImage() {
     let cancelled = false;
 
     const tick = async () => {
+      if (document.hidden) return;
       const path = await findLatestImagePath();
       if (cancelled) return;
       if (path && path !== lastPathRef.current) {
@@ -42,9 +43,12 @@ export function useLatestImage() {
 
     tick();
     const interval = setInterval(tick, POLL_INTERVAL_MS);
+    const onVisible = () => { if (!document.hidden) tick(); };
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       cancelled = true;
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
 
