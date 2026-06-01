@@ -53,7 +53,7 @@ export const useTelemetry = () => {
   const [flightStartMs, setFlightStartMs] = useState(() => Date.now());
   const [lastDataMs, setLastDataMs] = useState(null);
 
-  const lastDataAtRef = useRef(0);
+  const lastReceivedAtRef = useRef(0); // selainaika: viimeisin rivin SAAPUMISHetki
   const channelSubscribedRef = useRef(false);
   const currentFlightIdRef = useRef(null);
 
@@ -61,7 +61,7 @@ export const useTelemetry = () => {
 
   const markFresh = useCallback((createdAt) => {
     const t = createdAt ? new Date(createdAt).getTime() : Date.now();
-    if (t > lastDataAtRef.current) lastDataAtRef.current = t;
+    lastReceivedAtRef.current = Date.now();
     setLastDataMs(t);
     if (channelSubscribedRef.current) setStatus('online');
   }, []);
@@ -73,9 +73,10 @@ export const useTelemetry = () => {
     const curId = currentFlightIdRef.current;
     const newId = newData.flight_id;
 
-    if (curId != null && newId < curId) return;
-
-    if (curId != null && newId > curId) {
+    // Seurataan aina tuoreimman datan flight_id:tä, ei suurinta numeroa:
+    // realtime-INSERT on määritelmän mukaan tuorein rivi, joten mikä tahansa
+    // poikkeava flight_id (myös pienempi) tarkoittaa uutta lentoa.
+    if (curId != null && newId !== curId) {
       currentFlightIdRef.current = newId;
       setFlightStartMs(new Date(newData.created_at).getTime());
       setTelemetry(newData);
@@ -178,7 +179,7 @@ export const useTelemetry = () => {
             clean.reduce((m, d) => observeMax(m, d.gps_speed), null)
           );
           const newestMs = new Date(newest.created_at).getTime();
-          lastDataAtRef.current = newestMs;
+          lastReceivedAtRef.current = Date.now();
           setLastDataMs(newestMs);
         }
       } catch (err) {
@@ -223,7 +224,7 @@ export const useTelemetry = () => {
       });
 
     const freshnessTimer = setInterval(() => {
-      const fresh = Date.now() - lastDataAtRef.current < STALE_THRESHOLD_MS;
+      const fresh = Date.now() - lastReceivedAtRef.current < STALE_THRESHOLD_MS;
       if (channelSubscribedRef.current && fresh) setStatus('online');
       else setStatus('offline');
     }, FRESHNESS_CHECK_INTERVAL_MS);
