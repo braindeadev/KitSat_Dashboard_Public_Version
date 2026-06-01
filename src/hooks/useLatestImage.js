@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 
-const BUCKET = 'kitsat-images';
+const BUCKET = 'camera';
 const POLL_INTERVAL_MS = 5_000;
 
 async function findLatestImagePath() {
