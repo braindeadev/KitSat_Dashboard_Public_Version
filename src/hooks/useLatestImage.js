@@ -4,21 +4,31 @@ import { supabase } from '../supabaseClient';
 const BUCKET = 'camera';
 const POLL_INTERVAL_MS = 5_000;
 
+// Haetaan aina globaalisti uusin kuva: jokaisesta kansiosta sen tuorein
+// tiedosto (created_at desc) ja vertaillaan latausajat keskenään. Näin
+// kansioiden nimien lajittelu (esim. "8" > "19" merkkijonona) ei voi valita
+// väärää lentoa.
 async function findLatestImagePath() {
   const { data: folders } = await supabase.storage
     .from(BUCKET)
-    .list('', { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+    .list('', { limit: 100 });
 
   if (!folders) return null;
 
+  let newest = null; // { path, createdAt }
   for (const folder of folders) {
     if (folder.id !== null) continue;
     const { data: files } = await supabase.storage
       .from(BUCKET)
-      .list(folder.name, { limit: 1, sortBy: { column: 'name', order: 'desc' } });
-    if (files && files.length > 0) return `${folder.name}/${files[0].name}`;
+      .list(folder.name, { limit: 1, sortBy: { column: 'created_at', order: 'desc' } });
+    const file = files?.[0];
+    if (!file) continue;
+    const createdAt = file.created_at ?? file.updated_at ?? '';
+    if (!newest || createdAt > newest.createdAt) {
+      newest = { path: `${folder.name}/${file.name}`, createdAt };
+    }
   }
-  return null;
+  return newest ? newest.path : null;
 }
 
 export function useLatestImage() {
