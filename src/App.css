@@ -114,17 +114,13 @@ body, html {
 .dashboard-grid {
   display: grid;
   grid-template-columns: 1fr 1.2fr;
+  grid-template-rows: 1.5fr 1fr;
+  grid-template-areas:
+    "altitude map"
+    "left-metrics right-metrics";
   gap: 1rem;
   padding: 1rem;
   flex: 1;
-  min-height: 0;
-}
-
-/* Panels */
-.left-column, .right-column {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
   min-height: 0;
 }
 
@@ -134,6 +130,7 @@ body, html {
   backdrop-filter: var(--glass);
   border: 1px solid var(--border);
   border-radius: 4px;
+  box-sizing: border-box;
   padding: 0.45rem 1.5rem 1.25rem;
   box-shadow: var(--shadow-lg);
   display: flex;
@@ -160,7 +157,7 @@ body, html {
 }
 
 .altitude-section {
-  flex: 1.5;
+  grid-area: altitude;
 }
 
 .metric-meta {
@@ -218,9 +215,11 @@ body, html {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
-  flex: 1;
   min-height: 0;
 }
+
+.left-metrics { grid-area: left-metrics; }
+.right-metrics { grid-area: right-metrics; }
 
 .map-wrapper {
   height: 100%;
@@ -257,7 +256,7 @@ body, html {
 }
 
 .map-section {
-  flex: 1.5;
+  grid-area: map;
   padding: 1.5rem;
   overflow: hidden;
   /* Inherits var(--card-bg) from .glass-card */
@@ -416,6 +415,8 @@ body, html {
   body, html { height: auto; overflow: auto; }
   .dashboard-grid {
     grid-template-columns: 1fr;
+    grid-template-rows: none;
+    grid-template-areas: none;
     overflow-y: auto;
     height: auto;
   }
@@ -426,7 +427,6 @@ body, html {
 
 @media (max-width: 640px) {
   .dashboard-grid { gap: 0.75rem; padding: 0.75rem; }
-  .left-column, .right-column { gap: 0.75rem; }
   .glass-card { padding: 0.35rem 1rem 1rem; }
   .header-left h1 { font-size: 0.8rem; letter-spacing: 0.15em; }
   .metrics-row {

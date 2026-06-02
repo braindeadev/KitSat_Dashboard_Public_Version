@@ -78,7 +78,6 @@ function App() {
 
       <main className="dashboard-grid">
         <Suspense fallback={<div className="loading">LADATAAN…</div>}>
-        <section className="left-column">
           <div className="glass-card altitude-section">
             <h3 className="label">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
@@ -93,7 +92,7 @@ function App() {
             <MetricChart history={history} dataKey="alt" unit="m" color="var(--primary)" rangeMs={rangeMs} />
           </div>
 
-          <div className="metrics-row">
+          <div className="metrics-row left-metrics">
             <div className="glass-card">
               <h3 className="label">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>
@@ -118,9 +117,6 @@ function App() {
               <MetricChart history={history} dataKey="pressure" unit="hPa" color="var(--success)" rangeMs={rangeMs} />
             </div>
           </div>
-        </section>
-
-        <section className="right-column">
           <div className="glass-card map-section">
             <MapComponent
               lat={telemetry?.gps_fix ? telemetry.gps_lat : null}
@@ -129,7 +125,7 @@ function App() {
             />
           </div>
 
-          <div className="metrics-row">
+          <div className="metrics-row right-metrics">
             <div className="glass-card">
               <h3 className="label">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
@@ -148,7 +144,6 @@ function App() {
               <LatestImage />
             </div>
           </div>
-        </section>
         </Suspense>
       </main>
     </div>
