@@ -28,6 +28,13 @@ const balloonIcon = L.divIcon({
 
 const DEFAULT_CENTER = [60.1695, 24.9354];
 
+// Karttapohja teeman mukaan: dark-tilassa CARTOn tumma tyyli (kirkastetaan
+// CSS:llä App.css:ssä), light-tilassa värillinen Voyager sellaisenaan.
+const TILE_URLS = {
+  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  light: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+};
+
 function MapEffects({ lat, lng }) {
   const map = useMap();
   React.useEffect(() => {
@@ -43,7 +50,7 @@ function MapEffects({ lat, lng }) {
   return null;
 }
 
-const MapComponent = React.memo(({ lat, lng, route = [] }) => {
+const MapComponent = React.memo(({ lat, lng, route = [], theme = 'dark' }) => {
   const hasValidCoords = lat != null && lng != null;
   const initialCenter = useMemo(
     () => (hasValidCoords ? [lat, lng] : DEFAULT_CENTER),
@@ -61,8 +68,10 @@ const MapComponent = React.memo(({ lat, lng, route = [] }) => {
         style={{ height: '100%', width: '100%' }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>, &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
+          key={theme}
+          attribution='&copy; <a href="https://carto.com/attributions">CARTO</a> &copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url={TILE_URLS[theme] ?? TILE_URLS.dark}
+          subdomains="abcd"
         />
         {showRoute && (
           <Polyline

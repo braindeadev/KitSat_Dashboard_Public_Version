@@ -1,4 +1,4 @@
-import { useState, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useTelemetry } from './hooks/useTelemetry';
 import LatestImage from './components/LatestImage';
 import FlightTimer from './components/FlightTimer';
@@ -19,6 +19,13 @@ const RANGES = [
 
 const ROUTE_MAX_POINTS = 2000;
 
+// Teema: käyttäjän tallentama valinta voittaa, muuten käyttöjärjestelmän oletus.
+const getInitialTheme = () => {
+  const saved = localStorage.getItem('theme');
+  if (saved === 'light' || saved === 'dark') return saved;
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+};
+
 // Reitti on vain visuaalinen: harvennetaan tasavälein mutta pidetään viimeisin
 // piste mukana, jotta marker-jälki on ajan tasalla. Raakadata ei muutu.
 function buildRoute(history) {
@@ -36,7 +43,30 @@ function buildRoute(history) {
 function App() {
   const { telemetry, history, loading, status, maxAlt, minTemp, maxSpeed, flightStartMs, lastDataMs } = useTelemetry();
   const [rangeMs, setRangeMs] = useState(60_000);
+  const [theme, setTheme] = useState(getInitialTheme);
   const route = useMemo(() => buildRoute(history), [history]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
+  // Seurataan käyttöjärjestelmän teemaa niin kauan kuin käyttäjä ei ole
+  // tehnyt omaa valintaa.
+  useEffect(() => {
+    if (localStorage.getItem('theme')) return;
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    const onChange = (e) => setTheme(e.matches ? 'light' : 'dark');
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  const toggleTheme = () => {
+    setTheme((t) => {
+      const next = t === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', next);
+      return next;
+    });
+  };
 
   if (loading) {
     return <div className="loading">YHDISTETÄÄN OHJAUSKESKUKSEEN...</div>;
@@ -46,7 +76,6 @@ function App() {
     <div className="dashboard-container">
       <header className="dashboard-header">
         <div className="header-left">
-          <div style={{ width: '24px', height: '24px', background: 'var(--primary)', borderRadius: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#000', fontSize: '0.7rem' }}>KS</div>
           <h1>PSL-1R // Public dashboard</h1>
           <div className="flight-id">
             <span className="flight-id-label">Flight ID</span>
@@ -69,6 +98,13 @@ function App() {
           </div>
         </div>
         <div className="header-right">
+          <button className="range-btn theme-btn" onClick={toggleTheme} aria-label="Vaihda teema" title="Vaihda teema">
+            {theme === 'dark' ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            )}
+          </button>
           <div className={`status-indicator ${status}`}>
             <span className="status-dot"></span>
             {status === 'online' ? 'VERKOSSA' : 'EI YHTEYTTÄ'}
@@ -89,7 +125,9 @@ function App() {
             <div className="metric-meta">
               MAX <strong>{maxAlt != null ? maxAlt.toFixed(1) : '--'}</strong> m
             </div>
-            <MetricChart history={history} dataKey="alt" unit="m" color="var(--primary)" rangeMs={rangeMs} />
+            {/* Korkeuskäyrä on keltainen molemmissa teemoissa (light-teeman
+                --primary on tummempi amber, joten väri kovakoodataan) */}
+            <MetricChart history={history} dataKey="alt" unit="m" color="#fbbf24" rangeMs={rangeMs} />
           </div>
 
           <div className="metrics-row left-metrics">
@@ -122,6 +160,7 @@ function App() {
               lat={telemetry?.gps_fix ? telemetry.gps_lat : null}
               lng={telemetry?.gps_fix ? telemetry.gps_lon : null}
               route={route}
+              theme={theme}
             />
           </div>
 
