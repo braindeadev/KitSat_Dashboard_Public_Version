@@ -29,6 +29,7 @@ body, html {
   background-size: 100% 100%, 40px 40px, 40px 40px;
   color: var(--text-main);
   height: 100vh;
+  height: 100dvh; /* mobiiliselaimet: osoitepalkki ei jätä sisältöä piiloon */
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
@@ -37,6 +38,7 @@ body, html {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   box-sizing: border-box;
 }
 
@@ -421,21 +423,48 @@ body, html {
     height: auto;
   }
   .dashboard-container { overflow-y: auto; height: auto; }
+  /* grid-template-areas on poistettu yllä, joten nimetyt grid-areat pitää
+     nollata — muuten selain luo niille implisiittisiä sarakkeita ja
+     layout vuotaa vaakasuunnassa näytön ulkopuolelle. */
+  .altitude-section, .map-section, .left-metrics, .right-metrics { grid-area: auto; }
+  /* Status ja lentoaika näkyvissä myös skrollatessa */
+  .dashboard-header { position: sticky; top: 0; }
   .altitude-section, .map-section { min-height: 400px; }
   .metrics-row { min-height: 320px; }
 }
 
 @media (max-width: 640px) {
   .dashboard-grid { gap: 0.75rem; padding: 0.75rem; }
+  .dashboard-header { padding: 0.6rem 0.75rem; gap: 0.5rem 0.75rem; }
   .glass-card { padding: 0.35rem 1rem 1rem; }
   .header-left h1 { font-size: 0.8rem; letter-spacing: 0.15em; }
+  .flight-time, .flight-id { font-size: 0.75rem; padding: 0.2rem 0.5rem; }
   .metrics-row {
     grid-template-columns: 1fr;
     min-height: 0;
   }
   .metrics-row .glass-card { min-height: 280px; }
-  .altitude-section, .map-section { min-height: 320px; }
+  .altitude-section { min-height: 320px; }
+  .map-section {
+    min-height: 320px;
+    min-height: clamp(300px, 45dvh, 420px);
+  }
   .status-indicator { min-width: 0; }
+}
+
+/* Pienet puhelimet */
+@media (max-width: 400px) {
+  .dashboard-grid { gap: 0.5rem; padding: 0.5rem; }
+  .metrics-row { gap: 0.5rem; }
+  .glass-card { padding: 0.3rem 0.75rem 0.75rem; }
+  .header-left, .header-right { gap: 0.5rem; }
+  .header-left h1 { font-size: 0.7rem; letter-spacing: 0.1em; }
+  .flight-time, .flight-id { font-size: 0.7rem; }
+}
+
+/* Kosketusnäytöt: isommat osumakohteet aikaväli-napeille */
+@media (pointer: coarse) {
+  .range-btn { padding: 0.5rem 0.85rem; }
 }
 
 /* Short screens (laptops): compact values + padding so charts get vertical room */
