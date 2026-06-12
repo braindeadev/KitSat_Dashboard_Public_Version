@@ -36,6 +36,42 @@ const MAX_PLAUSIBLE_SPEED = 300; // m/s
 const cleanSpeed = (v) =>
   typeof v === 'number' && !Number.isNaN(v) && v >= 0 && v <= MAX_PLAUSIBLE_SPEED ? v : null;
 
+// GPS raportoi välillä rikkinäisiä koordinaatteja fixin silti ollessa true:
+// usein yksi komponentti putoaa nollan tienoille (esim. lat=0, lon=21.79),
+// jolloin karttaan piirtyy viiva "Null Islandiin" Afrikan rannikolle. Pallo ei
+// kuitenkaan voi hypätä satoja kilometrejä peräkkäisten näytteiden välillä, joten
+// hylätään koordinaatti (gps_fix -> false) jos se on mahdoton tai liian kaukana
+// edellisestä kelvollisesta sijainnista. Ei sidottu kovakoodattuun alueeseen.
+const MAX_JUMP_KM = 150;
+
+const distanceKm = (aLat, aLon, bLat, bLon) => {
+  const R = 6371, toRad = Math.PI / 180;
+  const dLat = (bLat - aLat) * toRad, dLon = (bLon - aLon) * toRad;
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(aLat * toRad) * Math.cos(bLat * toRad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+};
+
+// Palauttaa rivin, jonka gps_fix on false jos sijainti ei ole uskottava.
+// last on mutatoitava { value: {lat, lon} | null } -säiliö, joka kantaa viimeisen
+// kelvollisen sijainnin sekä alkulatauksen että realtime-päivitysten yli.
+const withCleanFix = (row, last) => {
+  if (!row.gps_fix) return row;
+  const lat = row.gps_lat, lon = row.gps_lon;
+  const inRange =
+    typeof lat === 'number' && typeof lon === 'number' &&
+    !Number.isNaN(lat) && !Number.isNaN(lon) &&
+    lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 &&
+    lat !== 0 && lon !== 0; // nolla = GPS:n "ei dataa" -sentinel, ei koskaan oikea sijainti täällä
+  if (!inRange) return { ...row, gps_fix: false };
+  if (last.value && distanceKm(last.value.lat, last.value.lon, lat, lon) > MAX_JUMP_KM) {
+    return { ...row, gps_fix: false };
+  }
+  last.value = { lat, lon };
+  return row;
+};
+
 const observeMax = (prev, v) => {
   if (v == null || Number.isNaN(v)) return prev;
   return prev == null || v > prev ? v : prev;
@@ -60,6 +96,7 @@ export const useTelemetry = () => {
   const lastReceivedAtRef = useRef(0); // selainaika: viimeisin rivin SAAPUMISHetki
   const channelSubscribedRef = useRef(false);
   const currentFlightIdRef = useRef(null);
+  const lastGoodCoordRef = useRef({ value: null }); // viimeisin uskottava sijainti
 
   const tableName = import.meta.env.VITE_SUPABASE_TABLE;
 
@@ -81,6 +118,8 @@ export const useTelemetry = () => {
     // realtime-INSERT on määritelmän mukaan tuorein rivi, joten mikä tahansa
     // poikkeava flight_id (myös pienempi) tarkoittaa uutta lentoa.
     if (curId != null && newId !== curId) {
+      lastGoodCoordRef.current.value = null; // uusi lento: sijainnin vertailu alusta
+      newData = withCleanFix(newData, lastGoodCoordRef.current);
       currentFlightIdRef.current = newId;
       setFlightStartMs(new Date(newData.created_at).getTime());
       setTelemetry(newData);
@@ -108,6 +147,8 @@ export const useTelemetry = () => {
       currentFlightIdRef.current = newId;
       setFlightStartMs(new Date(newData.created_at).getTime());
     }
+
+    newData = withCleanFix(newData, lastGoodCoordRef.current);
 
     setTelemetry((prev) => {
       if (prev?.created_at === newData.created_at) return prev;
@@ -166,9 +207,13 @@ export const useTelemetry = () => {
         } else if (data && data.length > 0) {
           currentFlightIdRef.current = flightId;
           setFlightStartMs(new Date(data[0].created_at).getTime());
+          // Käydään rivit aikajärjestyksessä: withCleanFix mutatoi last-säiliötä,
+          // joten sijainnin vertailu jatkuu saumatta realtime-päivityksiin.
+          const last = lastGoodCoordRef.current;
+          last.value = null;
           const clean = data
             .filter((d) => !isBadRow(d))
-            .map((d) => ({ ...d, gps_speed: cleanSpeed(d.gps_speed) }));
+            .map((d) => withCleanFix({ ...d, gps_speed: cleanSpeed(d.gps_speed) }, last));
           if (clean.length === 0) return;
           const newest = clean[clean.length - 1];
           setTelemetry(newest);
