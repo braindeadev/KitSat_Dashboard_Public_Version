@@ -6,14 +6,18 @@ const STALE_THRESHOLD_MS = 10_000;
 const FRESHNESS_CHECK_INTERVAL_MS = 2_000;
 const HISTORY_BUFFER = 200000; // turvaraja live-puskurille; riittää koko ~4 h lennolle
 const FETCH_PAGE_SIZE = 1000;
+// Alkulataus hakee vain UI:n käyttämät sarakkeet — taulussa on lisäksi mm.
+// IMU- ja virtadataa, joiden siirtäminen tuhansilla riveillä olisi turhaa.
+const TELEMETRY_COLUMNS =
+  'created_at,flight_id,gps_lat,gps_lon,gps_alt,gps_speed,gps_fix,temp_c,pressure_hpa';
 
 const toHistoryEntry = (d) => {
   const t = new Date(d.created_at);
   return {
     time: t.toLocaleTimeString(),
     rawTimeMs: t.getTime(),
-    alt: d.gps_alt ?? d.alt ?? null,
-    temp: d.temp_c ?? d.temp ?? null,
+    alt: d.gps_alt ?? null,
+    temp: d.temp_c ?? null,
     pressure: d.pressure_hpa ?? null,
     speed: d.gps_speed ?? null,
     lat: d.gps_lat,
@@ -81,8 +85,8 @@ export const useTelemetry = () => {
       setFlightStartMs(new Date(newData.created_at).getTime());
       setTelemetry(newData);
       setHistory([toHistoryEntry(newData)]);
-      setMaxAlt(observeMax(null, newData.gps_alt ?? newData.alt));
-      setMinTemp(observeMin(null, newData.temp_c ?? newData.temp));
+      setMaxAlt(observeMax(null, newData.gps_alt));
+      setMinTemp(observeMin(null, newData.temp_c));
       setMaxSpeed(observeMax(null, newData.gps_speed));
       markFresh(newData.created_at);
       supabase
@@ -114,8 +118,8 @@ export const useTelemetry = () => {
       if (prev.length && prev[prev.length - 1].rawTimeMs === entry.rawTimeMs) return prev;
       return [...prev, entry].slice(-HISTORY_BUFFER);
     });
-    setMaxAlt((prev) => observeMax(prev, newData.gps_alt ?? newData.alt));
-    setMinTemp((prev) => observeMin(prev, newData.temp_c ?? newData.temp));
+    setMaxAlt((prev) => observeMax(prev, newData.gps_alt));
+    setMinTemp((prev) => observeMin(prev, newData.temp_c));
     setMaxSpeed((prev) => observeMax(prev, newData.gps_speed));
     markFresh(newData.created_at);
   }, [markFresh, tableName]);
@@ -147,7 +151,7 @@ export const useTelemetry = () => {
         for (let from = 0; ; from += FETCH_PAGE_SIZE) {
           const { data: page, error: pageErr } = await supabase
             .from(tableName)
-            .select('*')
+            .select(TELEMETRY_COLUMNS)
             .eq('flight_id', flightId)
             .order('created_at', { ascending: true })
             .range(from, from + FETCH_PAGE_SIZE - 1);
@@ -170,10 +174,10 @@ export const useTelemetry = () => {
           setTelemetry(newest);
           setHistory(clean.map(toHistoryEntry));
           setMaxAlt(
-            clean.reduce((m, d) => observeMax(m, d.gps_alt ?? d.alt), null)
+            clean.reduce((m, d) => observeMax(m, d.gps_alt), null)
           );
           setMinTemp(
-            clean.reduce((m, d) => observeMin(m, d.temp_c ?? d.temp), null)
+            clean.reduce((m, d) => observeMin(m, d.temp_c), null)
           );
           setMaxSpeed(
             clean.reduce((m, d) => observeMax(m, d.gps_speed), null)

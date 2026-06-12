@@ -26,25 +26,8 @@ const getInitialTheme = () => {
   return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
 };
 
-// Reitti on vain visuaalinen: harvennetaan tasavälein mutta pidetään viimeisin
-// piste mukana, jotta marker-jälki on ajan tasalla. Raakadata ei muutu.
-function buildRoute(history) {
-  const pts = [];
-  for (const h of history) if (h.fix) pts.push([h.lat, h.lon]);
-  if (pts.length <= ROUTE_MAX_POINTS) return pts;
-  const step = pts.length / ROUTE_MAX_POINTS;
-  const out = [];
-  for (let i = 0; i < ROUTE_MAX_POINTS; i++) out.push(pts[Math.floor(i * step)]);
-  const last = pts[pts.length - 1];
-  if (out[out.length - 1] !== last) out.push(last);
-  return out;
-}
-
-function App() {
-  const { telemetry, history, loading, status, maxAlt, minTemp, maxSpeed, flightStartMs, lastDataMs } = useTelemetry();
-  const [rangeMs, setRangeMs] = useState(60_000);
+function useTheme() {
   const [theme, setTheme] = useState(getInitialTheme);
-  const route = useMemo(() => buildRoute(history), [history]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -67,6 +50,62 @@ function App() {
       return next;
     });
   };
+
+  return [theme, toggleTheme];
+}
+
+// Reitti on vain visuaalinen: harvennetaan tasavälein mutta pidetään viimeisin
+// piste mukana, jotta marker-jälki on ajan tasalla. Raakadata ei muutu.
+function buildRoute(history) {
+  const pts = [];
+  for (const h of history) if (h.fix && h.lat != null && h.lon != null) pts.push([h.lat, h.lon]);
+  if (pts.length <= ROUTE_MAX_POINTS) return pts;
+  const step = pts.length / ROUTE_MAX_POINTS;
+  const out = [];
+  for (let i = 0; i < ROUTE_MAX_POINTS; i++) out.push(pts[Math.floor(i * step)]);
+  const last = pts[pts.length - 1];
+  if (out[out.length - 1] !== last) out.push(last);
+  return out;
+}
+
+const Icon = ({ children }) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    {children}
+  </svg>
+);
+
+const ICONS = {
+  altitude: <Icon><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></Icon>,
+  temperature: <Icon><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></Icon>,
+  pressure: <Icon><circle cx="12" cy="12" r="10"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></Icon>,
+  speed: <Icon><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></Icon>,
+  sun: <Icon><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></Icon>,
+  moon: <Icon><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></Icon>,
+};
+
+// Mittarikortti: otsikko ikonilla, nykyarvo, valinnainen min/max-rivi ja kaavio.
+function MetricCard({ icon, title, value, unit, metaLabel, metaValue, history, dataKey, color, rangeMs, large = false, className }) {
+  return (
+    <div className={className ? `glass-card ${className}` : 'glass-card'}>
+      <h3 className="label">{icon}{title}</h3>
+      <p className={large ? 'value-large' : 'value-medium'}>
+        {value?.toFixed(1) ?? '--'}<span className="unit">{unit}</span>
+      </p>
+      {metaLabel && (
+        <div className="metric-meta">
+          {metaLabel} <strong>{metaValue != null ? metaValue.toFixed(1) : '--'}</strong> {unit}
+        </div>
+      )}
+      <MetricChart history={history} dataKey={dataKey} unit={unit} color={color} rangeMs={rangeMs} />
+    </div>
+  );
+}
+
+function App() {
+  const { telemetry, history, loading, status, maxAlt, minTemp, maxSpeed, flightStartMs, lastDataMs } = useTelemetry();
+  const [rangeMs, setRangeMs] = useState(60_000);
+  const [theme, toggleTheme] = useTheme();
+  const route = useMemo(() => buildRoute(history), [history]);
 
   if (loading) {
     return <div className="loading">YHDISTETÄÄN OHJAUSKESKUKSEEN...</div>;
@@ -99,11 +138,7 @@ function App() {
         </div>
         <div className="header-right">
           <button className="range-btn theme-btn" onClick={toggleTheme} aria-label="Vaihda teema" title="Vaihda teema">
-            {theme === 'dark' ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-            )}
+            {theme === 'dark' ? ICONS.sun : ICONS.moon}
           </button>
           <div className={`status-indicator ${status}`}>
             <span className="status-dot"></span>
@@ -114,47 +149,48 @@ function App() {
 
       <main className="dashboard-grid">
         <Suspense fallback={<div className="loading">LADATAAN…</div>}>
-          <div className="glass-card altitude-section">
-            <h3 className="label">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
-              Korkeus
-            </h3>
-            <p className="value-large">
-              {telemetry?.gps_alt?.toFixed(1) ?? '--'}<span className="unit">m</span>
-            </p>
-            <div className="metric-meta">
-              MAX <strong>{maxAlt != null ? maxAlt.toFixed(1) : '--'}</strong> m
-            </div>
-            {/* Korkeuskäyrä on keltainen molemmissa teemoissa (light-teeman
-                --primary on tummempi amber, joten väri kovakoodataan) */}
-            <MetricChart history={history} dataKey="alt" unit="m" color="#fbbf24" rangeMs={rangeMs} />
-          </div>
+          {/* Korkeuskäyrä on keltainen molemmissa teemoissa (light-teeman
+              --primary on tummempi amber, joten väri kovakoodataan) */}
+          <MetricCard
+            className="altitude-section"
+            large
+            icon={ICONS.altitude}
+            title="Korkeus"
+            value={telemetry?.gps_alt}
+            unit="m"
+            metaLabel="MAX"
+            metaValue={maxAlt}
+            history={history}
+            dataKey="alt"
+            color="#fbbf24"
+            rangeMs={rangeMs}
+          />
 
           <div className="metrics-row left-metrics">
-            <div className="glass-card">
-              <h3 className="label">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>
-                Lämpötila
-              </h3>
-              <p className="value-medium">
-                {telemetry?.temp_c?.toFixed(1) ?? '--'}<span className="unit">°C</span>
-              </p>
-              <div className="metric-meta">
-                MIN <strong>{minTemp != null ? minTemp.toFixed(1) : '--'}</strong> °C
-              </div>
-              <MetricChart history={history} dataKey="temp" unit="°C" color="var(--accent)" rangeMs={rangeMs} />
-            </div>
-            <div className="glass-card">
-              <h3 className="label">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>
-                Ilmanpaine
-              </h3>
-              <p className="value-medium">
-                {telemetry?.pressure_hpa?.toFixed(1) ?? '--'}<span className="unit">hPa</span>
-              </p>
-              <MetricChart history={history} dataKey="pressure" unit="hPa" color="var(--success)" rangeMs={rangeMs} />
-            </div>
+            <MetricCard
+              icon={ICONS.temperature}
+              title="Lämpötila"
+              value={telemetry?.temp_c}
+              unit="°C"
+              metaLabel="MIN"
+              metaValue={minTemp}
+              history={history}
+              dataKey="temp"
+              color="var(--accent)"
+              rangeMs={rangeMs}
+            />
+            <MetricCard
+              icon={ICONS.pressure}
+              title="Ilmanpaine"
+              value={telemetry?.pressure_hpa}
+              unit="hPa"
+              history={history}
+              dataKey="pressure"
+              color="var(--success)"
+              rangeMs={rangeMs}
+            />
           </div>
+
           <div className="glass-card map-section">
             <MapComponent
               lat={telemetry?.gps_fix ? telemetry.gps_lat : null}
@@ -165,19 +201,18 @@ function App() {
           </div>
 
           <div className="metrics-row right-metrics">
-            <div className="glass-card">
-              <h3 className="label">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
-                Nopeus
-              </h3>
-              <p className="value-medium">
-                {telemetry?.gps_speed?.toFixed(1) ?? '--'}<span className="unit">m/s</span>
-              </p>
-              <div className="metric-meta">
-                MAX <strong>{maxSpeed != null ? maxSpeed.toFixed(1) : '--'}</strong> m/s
-              </div>
-              <MetricChart history={history} dataKey="speed" unit="m/s" color="var(--error)" rangeMs={rangeMs} />
-            </div>
+            <MetricCard
+              icon={ICONS.speed}
+              title="Nopeus"
+              value={telemetry?.gps_speed}
+              unit="m/s"
+              metaLabel="MAX"
+              metaValue={maxSpeed}
+              history={history}
+              dataKey="speed"
+              color="var(--error)"
+              rangeMs={rangeMs}
+            />
             <div className="glass-card image-section">
               <h3 className="label">Viimeisin kuva</h3>
               <LatestImage />

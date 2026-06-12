@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -37,11 +37,11 @@ const TILE_URLS = {
 
 function MapEffects({ lat, lng }) {
   const map = useMap();
-  React.useEffect(() => {
+  useEffect(() => {
     const t = setTimeout(() => map.invalidateSize(), 0);
     return () => clearTimeout(t);
   }, [map]);
-  React.useEffect(() => {
+  useEffect(() => {
     if (lat == null || lng == null) return;
     const c = map.getCenter();
     if (c.lat === lat && c.lng === lng) return;
@@ -50,12 +50,11 @@ function MapEffects({ lat, lng }) {
   return null;
 }
 
-const MapComponent = React.memo(({ lat, lng, route = [], theme = 'dark' }) => {
+const MapComponent = memo(({ lat, lng, route = [], theme = 'dark' }) => {
   const hasValidCoords = lat != null && lng != null;
-  const initialCenter = useMemo(
-    () => (hasValidCoords ? [lat, lng] : DEFAULT_CENTER),
-    [] // eslint-disable-line react-hooks/exhaustive-deps
-  );
+  // Keskipiste kiinnitetään mount-hetkellä: MapContainer ei seuraa center-propin
+  // muutoksia, vaan näkymää siirtää MapEffects.
+  const [initialCenter] = useState(() => (hasValidCoords ? [lat, lng] : DEFAULT_CENTER));
   const markerPosition = useMemo(() => [lat ?? 0, lng ?? 0], [lat, lng]);
   const showRoute = route.length >= 2;
 

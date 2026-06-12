@@ -1,14 +1,16 @@
-import React from 'react';
+import { memo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const formatTimeLabel = (ms) => new Date(ms).toLocaleTimeString();
 
-const TelemetryChart = React.memo(({ data, dataKey, unit, color = "var(--primary)", domain, ticks, yDomain, yTicks }) => {
+const TelemetryChart = memo(({ data, dataKey, unit, color = "var(--primary)", domain, ticks, yDomain, yTicks }) => {
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 30 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={true} stroke="rgba(255,255,255,0.05)" />
+          {/* Viivojen värit tulevat App.css:stä (--chart-grid), joka ylikirjoittaa
+              rechartsin attribuutit — siksi tässä ei aseteta strokea. */}
+          <CartesianGrid strokeDasharray="3 3" vertical={true} />
           <XAxis
             dataKey="rawTimeMs"
             type="number"
@@ -44,7 +46,7 @@ const TelemetryChart = React.memo(({ data, dataKey, unit, color = "var(--primary
               boxShadow: 'var(--shadow-lg)'
             }}
             itemStyle={{ color: color, fontSize: '11px', fontFamily: 'var(--font-mono)' }}
-            cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
+            cursor={{ strokeWidth: 1 }}
             labelFormatter={formatTimeLabel}
             formatter={(value) => [`${Number(value).toFixed(2)} ${unit}`, dataKey]}
           />

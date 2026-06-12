@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import TelemetryChart from './TelemetryChart';
 
 const CHART_MAX_POINTS = 2000;
+const TICK_COUNT = 6; // X-akselin aikaleimojen määrä
 
 // Harvennetaan vain kaaviolle: säilytetään kunkin bucketin min ja max (piikit
 // eivät katoa) ja pidetään aikajärjestys. Raakadata ei muutu tämän ulkopuolella.
@@ -80,7 +81,6 @@ export default function MetricChart({ history, dataKey, unit, color, rangeMs }) 
       chartData = history.filter((h) => h.rawTimeMs >= domStart);
     }
 
-    const TICK_COUNT = 6;
     const span = domEnd - domStart;
     const step = span > 0 ? span / (TICK_COUNT - 1) : 0;
     const tickArr = step > 0
